@@ -1,4 +1,4 @@
-name: 'danger'
+name: 'dev-kit/danger'
 description: 'Danger JS github action job.'
 author: 'vitorgouveia'
 
