@@ -1,5 +1,18 @@
 const core = require('@actions/core')
-const { wait } = require('./wait')
+const exec = require('@actions/exec')
+const io = require('@actions/io')
+
+// const { wait } = require('./wait')
+
+const dangerfile = `
+async function App() {
+  return "app"
+}
+
+;(async () => {
+  console.log(App())
+})();
+`
 
 /**
  * The main function for the action.
@@ -7,18 +20,32 @@ const { wait } = require('./wait')
  */
 async function run() {
   try {
-    const ms = core.getInput('milliseconds', { required: true })
+    core.info('↳ Installing dangerfile')
+    // await exec.exec('npm i danger')
+  } catch (error) {
+    // Fail the workflow run if an error occurs
+    core.setFailed(error.message)
+  }
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+  try {
+    core.info('↳ Installing dependencies')
+    // await exec.exec('npm i')
+  } catch (error) {
+    // Fail the workflow run if an error occurs
+    core.setFailed(error.message)
+  }
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+  // try {
+  //   io.core.info('↳ Reading .danger.json configuration file')
+  //   await exec.exec('npm i')
+  // } catch (error) {
+  //   // Fail the workflow run if an error occurs
+  //   core.setFailed(error.message)
+  // }
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+  try {
+    core.info('↳ Adding danger configuration')
+    // await exec.exec(`echo $'${dangerfile}' >> test.md`)
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
