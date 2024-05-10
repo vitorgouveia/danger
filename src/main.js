@@ -3,6 +3,7 @@ const exec = require('@actions/exec')
 const io = require('@actions/io')
 
 const fs = require('node:fs/promises')
+const child_process = require('node:child_process')
 const { dangerfile } = require('./dangerfile')
 // const { wait } = require('./wait')
 
@@ -50,7 +51,9 @@ async function run() {
 
   try {
     core.info('↳ Executing danger')
-    await exec.exec('npx danger ci --failOnErrors')
+    child_process.execSync('npx danger ci --failOnErrors', {
+      stdio: 'inherit'
+    })
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
