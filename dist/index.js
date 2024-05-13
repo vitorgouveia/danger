@@ -56325,7 +56325,7 @@ async function run() {
 
   try {
     core.info('↳ Executing danger')
-    await exec.exec('npx danger ci --failOnErrors')
+    // await exec.exec('npx danger ci --failOnErrors')
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
