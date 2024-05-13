@@ -12,6 +12,23 @@ const path = file => `${process.cwd()}/${file}`
  */
 async function run() {
   try {
+    core.info('↳ Installing danger')
+    // TODO: cache this call
+    await exec.exec('npm i danger')
+  } catch (error) {
+    // Fail the workflow run if an error occurs
+    core.setFailed(error.message)
+  }
+
+  // try {
+  //   io.core.info('↳ Reading .danger.json configuration file')
+  //   await exec.exec('npm i')
+  // } catch (error) {
+  //   // Fail the workflow run if an error occurs
+  //   core.setFailed(error.message)
+  // }
+
+  try {
     core.info('↳ Adding dangerfile')
     const dangerfile_path = path('dangerfile.js')
     const dangerfile_content = dangerfile
