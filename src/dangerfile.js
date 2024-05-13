@@ -3,6 +3,7 @@ const {
   message, danger, warn, fail
 } = require('danger');
 const { execSync } = require('node:child_process');
+const fs = require('node:fs/promises');
 const { name: serviceName } = require('./package.json');
 
 const modifiedFiles = danger.git.modified_files;
@@ -92,7 +93,7 @@ const verifyDevdependencies = async () => {
   }
 };
 
-const verifyImportantFiles = () => {
+const verifyImportantFiles = (level, files) => {
   const importantFiles = [
     'config.yml',
     'Dockerfile',
@@ -100,11 +101,13 @@ const verifyImportantFiles = () => {
     '.eslintrc',
     'sonar-project.properties',
     '.mocharc.json',
-    '.nycrc.json'
+    '.nycrc.json',
+    ...files
   ];
+
   importantFiles.forEach((file) => {
     if (findModifiedFile(file)) {
-      message(\`Atenção: O arquivo <strong>\${file}</strong> foi atualizado.\`);
+      level(\`Atenção: O arquivo <strong>\${file}</strong> foi atualizado.\`);
     }
   });
 };
@@ -130,7 +133,7 @@ const buildScriptMessage = async () => {
   }
 };
 
-const verifyOutdatedPackages = async () => {
+const verifyOutdatedPackages = async (level) => {
   try {
     const output = execSync('npm outdated --json || true');
     const json = JSON.parse(output.toString());
@@ -145,7 +148,7 @@ const verifyOutdatedPackages = async () => {
 
 
     if (packagesToUpdate.length) {
-      message(
+      level(
         'Dependências com novas versões disponíveis: <br/>'
         + \` \${packagesToUpdate.join('<br/>')} \`
       );
@@ -157,15 +160,54 @@ const verifyOutdatedPackages = async () => {
 };
 
 const execValidation = async () => {
-  verifyDescriptionChanges();
-  await verifyTestChanges();
-  await buildScriptMessage();
-  if (findModifiedFile('package.json')) {
-    verifyImportantFiles();
-    await verifyDocs();
-    await verifyDevdependencies();
+  const file = await fs.readFile(".dangerrc", 'utf8')
+  const config = JSON.parse(file)
+  const rules = config.rules
+
+  const levels = {
+    0: () => {},
+    1: message,
+    2: warn,
+    3: fail
   }
-  await verifyOutdatedPackages();
+
+  const exec = (level, message) => {
+    if(typeof level !== "string") {
+      return
+    }
+    
+    const logger = levels[level]
+    return logger(message)
+  }
+
+  if(rules['has-rc']) {
+    if (packageDiff.version && packageDiff.version.after.includes('-rc')) {
+      exec(rules['has-rc'], "🤦 Versão com RC")
+    }
+  }
+
+  if(rules['important-files']) {
+    verifyImportantFiles(
+      exec(rules['important-files']),
+      config['important-files'] || []
+    )
+  }
+
+  if(rules['npm-outdated']) {
+    await verifyOutdatedPackages(
+      exec(rules['important-files'])
+    )
+  }
+
+  // verifyDescriptionChanges();
+  // await verifyTestChanges();
+  // await buildScriptMessage();
+  // if (findModifiedFile('package.json')) {
+  //   verifyImportantFiles();
+  //   await verifyDocs();
+  //   await verifyDevdependencies();
+  // }
+  // await verifyOutdatedPackages();
 };
 
 execValidation();

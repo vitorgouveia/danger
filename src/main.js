@@ -36,14 +36,6 @@ async function run() {
     }
   }
 
-  // try {
-  //   io.core.info('↳ Reading .danger.json configuration file')
-  //   await exec.exec('npm i')
-  // } catch (error) {
-  //   // Fail the workflow run if an error occurs
-  //   core.setFailed(error.message)
-  // }
-
   try {
     core.info('↳ Adding dangerfile')
     const dangerfile_path = path('dangerfile.js')
