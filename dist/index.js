@@ -56281,7 +56281,7 @@ const execValidation = async () => {
 
   if(rules['npm-outdated']) {
     await verifyOutdatedPackages(
-      exec.bind(rules['important-files'])
+      exec.bind(rules['npm-outdated'])
     )
   }
 
