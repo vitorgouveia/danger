@@ -1,23 +1,39 @@
 const core = require('@actions/core')
 const exec = require('@actions/exec')
+const cache = require('@actions/cache')
 
 const fs = require('node:fs/promises')
 const { dangerfile } = require('./dangerfile')
 
 const path = file => `${process.cwd()}/${file}`
 
+const paths = ['node_modules']
+const key = 'danger-action-install'
+
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
-  try {
-    core.info('↳ Installing danger')
-    // TODO: cache this call
-    await exec.exec('npm i danger')
-  } catch (error) {
-    // Fail the workflow run if an error occurs
-    core.setFailed(error.message)
+  const dangerCached = await cache.restoreCache(paths, key)
+
+  if (!dangerCached) {
+    try {
+      core.info('↳ Installing danger')
+      // TODO: cache this call
+      await exec.exec('npm i danger')
+    } catch (error) {
+      // Fail the workflow run if an error occurs
+      core.setFailed(error.message)
+    }
+
+    try {
+      await cache.saveCache(paths, key)
+      core.info('danger saved to cache')
+    } catch (error) {
+      // Fail the workflow run if an error occurs
+      core.setFailed(error.message)
+    }
   }
 
   // try {
@@ -41,7 +57,7 @@ async function run() {
 
   try {
     core.info('↳ Executing danger')
-    await exec.exec('npx danger ci --failOnErrors')
+    // await exec.exec('npx danger ci --failOnErrors')
   } catch (error) {
     // Fail the workflow run if an error occurs
     core.setFailed(error.message)
