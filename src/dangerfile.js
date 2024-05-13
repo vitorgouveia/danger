@@ -181,6 +181,7 @@ const execValidation = async () => {
   }
 
   if(rules['has-rc']) {
+    const packageDiff = await danger.git.JSONDiffForFile('package.json');
     if (packageDiff.version && packageDiff.version.after.includes('-rc')) {
       exec(rules['has-rc'], "🤦 Versão com RC")
     }

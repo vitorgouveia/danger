@@ -1,7 +1,7 @@
 {
   "name": "danger",
   "description": "Danger JS gitub action job.",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "author": "",
   "private": true,
   "homepage": "https://github.com/vitorgouveia/danger#readme",
