@@ -189,14 +189,14 @@ const execValidation = async () => {
 
   if(rules['important-files']) {
     verifyImportantFiles(
-      exec(rules['important-files']),
+      exec.bind(rules['important-files']),
       config['important-files'] || []
     )
   }
 
   if(rules['npm-outdated']) {
     await verifyOutdatedPackages(
-      exec(rules['important-files'])
+      exec.bind(rules['important-files'])
     )
   }
 
