@@ -56084,101 +56084,95 @@ module.exports.implForWrapper = function (wrapper) {
 /***/ ((module) => {
 
 const dangerfile = `
-const {
-  message, danger, warn, fail
-} = require('danger');
-const { execSync } = require('node:child_process');
-const fs = require('node:fs/promises');
-const { name: serviceName } = require('./package.json');
+const { message, danger, warn, fail } = require('danger')
+const fs = require('node:fs/promises')
+const child_process = require('node:child_process')
 
-const modifiedFiles = danger.git.modified_files;
-const createdFiles = danger.git.created_files;
+const { name: serviceName } = require('./package.json')
 
-const findModifiedFile = (fileName) => modifiedFiles.find((modifiedFile) => modifiedFile.includes(fileName));
+const levels = {
+  0: () => {},
+  1: message,
+  2: warn,
+  3: fail
+}
 
-const findModifiedTestFiles = () => modifiedFiles.filter((file) => file.includes('test.js'));
+const exec = level => msg => {
+  if (typeof level !== 'number' || !level) return
 
-const findCreatedTestFiles = () => createdFiles.filter((file) => file.includes('test.js'));
+  const exe = levels?.[level]
 
-const findModifiedSourceFiles = () => modifiedFiles.filter((file) => file.includes('lib/'));
+  if (!exe) return
 
-const findCreatedSourceFiles = () => createdFiles.filter((file) => file.includes('lib/'));
+  return exe(msg)
+}
 
-const testFiles = [...findModifiedTestFiles(), ...findCreatedTestFiles()];
+const modifiedFiles = danger.git.modified_files
+const createdFiles = danger.git.created_files
 
-const sourceFiles = [...findModifiedSourceFiles(), ...findCreatedSourceFiles()];
+const findModifiedFile = fileName =>
+  modifiedFiles.find(modifiedFile => modifiedFile.includes(fileName))
 
-const verifyTestChanges = async () => {
-  if (!testFiles.length && sourceFiles.length) {
-    return warn('Nenhum teste foi criado ou atualizado para a nova implementação');
-  }
-  // eslint-disable-next-line no-restricted-syntax
-  for (const testFile of testFiles) {
-    const { diff } = await danger.git.diffForFile(testFile);
-    if (!diff.includes('assert')) {
-      warn(\`Nenhum expect/assert foi adicionado no teste \${testFile}\`);
-    }
-  }
-};
+const findModifiedTestFiles = () =>
+  modifiedFiles.filter(file => file.includes('test.js'))
+const findCreatedTestFiles = () =>
+  createdFiles.filter(file => file.includes('test.js'))
+const testFiles = [...findModifiedTestFiles(), ...findCreatedTestFiles()]
 
-const verifyDescriptionChanges = () => {
+const findModifiedSourceFiles = () =>
+  modifiedFiles.filter(file => file.includes('lib/'))
+const findCreatedSourceFiles = () =>
+  createdFiles.filter(file => file.includes('lib/'))
+const sourceFiles = [...findModifiedSourceFiles(), ...findCreatedSourceFiles()]
+
+const verifyDescriptionChanges = async msg => {
   if (!danger.github.pr.body) {
-    warn('Escreva uma breve descrição do PR.');
+    msg('Escreva uma breve descrição do PR.')
   }
-};
+}
 
-const verifyDocs = async () => {
-  const packageDiff = await danger.git.JSONDiffForFile('package.json');
-  if (packageDiff.version) {
-    if (packageDiff.version.after.includes('-rc')) {
-      fail('Versão com RC');
-    }
-    if (!findModifiedFile('CHANGELOG.md')) {
-      warn('<strong>CHANGELOG.md</strong> deve ser atualizado com as features implementadas na versão');
-    }
+const verifyTestChanges = async msg => {
+  if (!testFiles.length && sourceFiles.length) {
+    return msg(
+      'Nenhum teste foi criado ou atualizado para a nova implementação'
+    )
   }
-};
 
-const findDiffDependencies = (diffDependencies) => {
-  const newDevDependencies = [];
-  const updatedDevDependencies = [];
-  Object.keys(diffDependencies.after).forEach((devDependency) => {
-    const versionBefore = diffDependencies.before[devDependency];
-    const versionAfter = diffDependencies.after[devDependency];
-    if (versionAfter && !versionBefore) {
-      newDevDependencies.push(\`\${devDependency} - \${versionAfter.replace('^', '')}\`);
+  for (const testFile of testFiles) {
+    const { diff } = await danger.git.diffForFile(testFile)
+    if (!diff.includes('assert')) {
+      msg(\`Nenhum expect/assert foi adicionado no teste \${testFile}\`)
     }
-    if (versionBefore && versionAfter !== versionBefore) {
-      updatedDevDependencies.push(
-        \`\${devDependency} - De \${versionBefore.replace('^', '')} para \${versionAfter.replace('^', '')}\`
-      );
+  }
+}
+
+const buildScriptMessage = async msg => {
+  const scriptMessage = []
+
+  if (findModifiedFile('package.json')) {
+    const packageDiff = await danger.git.JSONDiffForFile('package.json')
+    const stringPackageContent = await danger.github.utils.fileContents(
+      findModifiedFile('package.json')
+    )
+    const objectPackageContent = JSON.parse(stringPackageContent)
+    if (packageDiff.version && !packageDiff.version.after.includes('-rc')) {
+      const versionMessage =
+        \`\n <strong>Microsserviço</strong>: \${serviceName}\` +
+        \`\n <strong>Versão</strong>: \${objectPackageContent.version}\`
+      scriptMessage.push(versionMessage)
     }
-  });
-  if (newDevDependencies.length) {
-    message(
-      'Novas dependências de desenvolvimento instaladas neste PR: <br/>'
-      + \` \${newDevDependencies.join('<br/>')} \`
-    );
   }
-  if (updatedDevDependencies.length) {
-    message(
-      'Dependências de desenvolvimento foram atualizadas neste PR: <br/> '
-      + \` \${updatedDevDependencies.join('<br/>')} \`
-    );
+  if (scriptMessage.length) {
+    const headerMessage =
+      ' =================== Roteiro de Implantação =================== \\n\\n'
+    const fullMessage = headerMessage + scriptMessage
+    msg(fullMessage)
+  } else {
+    msg('Nenhuma alteração na versão')
   }
-};
+}
 
-const verifyDevdependencies = async () => {
-  const packageDiff = await danger.git.JSONDiffForFile('package.json');
-  if (packageDiff.devDependencies) {
-    findDiffDependencies(packageDiff.devDependencies);
-  }
-  if (packageDiff.dependencies) {
-    findDiffDependencies(packageDiff.dependencies);
-  }
-};
-
-const verifyImportantFiles = (level, files) => {
+const verifyImportantFiles = async (msg, list = []) => {
   const importantFiles = [
     'config.yml',
     'Dockerfile',
@@ -56187,116 +56181,164 @@ const verifyImportantFiles = (level, files) => {
     'sonar-project.properties',
     '.mocharc.json',
     '.nycrc.json',
-    ...files
-  ];
+    ...list
+  ]
 
-  importantFiles.forEach((file) => {
+  for (const file of importantFiles) {
     if (findModifiedFile(file)) {
-      level(\`Atenção: O arquivo <strong>\${file}</strong> foi atualizado.\`);
-    }
-  });
-};
-
-const buildScriptMessage = async () => {
-  const scriptMessage = [];
-  if (findModifiedFile('package.json')) {
-    const packageDiff = await danger.git.JSONDiffForFile('package.json');
-    const stringPackageContent = await danger.github.utils.fileContents(findModifiedFile('package.json'));
-    const objectPackageContent = JSON.parse(stringPackageContent);
-    if (packageDiff.version && !packageDiff.version.after.includes('-rc')) {
-      const versionMessage = \`\n <strong>Microsserviço</strong>: \${serviceName} \`
-        + \`\n <strong>Versão</strong>: \${objectPackageContent.version}\`;
-      scriptMessage.push(versionMessage);
+      msg(\`Atenção: O arquivo <strong>\${file}</strong> foi atualizado.\`)
     }
   }
-  if (scriptMessage.length) {
-    const headerMessage = ' =================== Roteiro de Implantação =================== \\n\\n';
-    const fullMessage = headerMessage + scriptMessage;
-    message(fullMessage);
-  } else {
-    message('Nenhuma alteração na versão');
-  }
-};
+}
 
-const verifyOutdatedPackages = async (level) => {
+const verifyDocs = async msg => {
+  if (!findModifiedFile('package.json')) return
+
+  const packageDiff = await danger.git.JSONDiffForFile('package.json')
+  if (packageDiff.version) {
+    if (packageDiff.version.after.includes('-rc')) {
+      msg('Versão com RC')
+    }
+
+    if (!findModifiedFile('CHANGELOG.md')) {
+      msg(
+        '<strong>CHANGELOG.md</strong> deve ser atualizado com as features implementadas na versão'
+      )
+    }
+  }
+}
+
+const verifyDependencies = async msg => {
+  if (!findModifiedFile('package.json')) return
+
+  const findDiffDependencies = (diffDependencies, type) => {
+    const newDevDependencies = []
+    const updatedDevDependencies = []
+    const dependencies = Object.keys(diffDependencies.after)
+
+    for (const devDependency of dependencies) {
+      const versionBefore = diffDependencies.before[devDependency]
+      const versionAfter = diffDependencies.after[devDependency]
+
+      if (versionAfter && !versionBefore) {
+        newDevDependencies.push(
+          \`\${devDependency} - \${versionAfter.replace('^', '')}\`
+        )
+      }
+
+      if (versionBefore && versionAfter !== versionBefore) {
+        updatedDevDependencies.push(
+          \`\${devDependency} - De \${versionBefore.replace('^', '')} para \${versionAfter.replace('^', '')}\`
+        )
+      }
+    }
+
+    if (newDevDependencies.length) {
+      msg(
+        \`Novas \${type} instaladas neste PR: <br/>\` +
+          \` \${newDevDependencies.join('<br/>')}\`
+      )
+    }
+
+    if (updatedDevDependencies.length) {
+      msg(
+        \`\${type} foram atualizadas neste PR: <br/> \` +
+          \` \${updatedDevDependencies.join('<br/>')}\`
+      )
+    }
+  }
+
+  const packageDiff = await danger.git.JSONDiffForFile('package.json')
+
+  if (packageDiff.devDependencies) {
+    findDiffDependencies(
+      packageDiff.devDependencies,
+      'dependências de desenvolvimento'
+    )
+  }
+
+  if (packageDiff.dependencies) {
+    findDiffDependencies(packageDiff.dependencies, 'dependências')
+  }
+}
+
+const verifyOutdatedPackages = async msg => {
   try {
-    const output = execSync('npm outdated --json || true');
-    const json = JSON.parse(output.toString());
-    const entries = Object.entries(json);
+    const output = child_process.execSync('npm outdated --json || true')
+    const json = JSON.parse(output.toString())
+    const entries = Object.entries(json)
 
-    const packagesToUpdate = entries
-      .map((obj) => {
-        const [packageName, { current, latest }] = obj;
+    const packagesToUpdate = entries.map(obj => {
+      const [packageName, { current, latest }] = obj
 
-        return \`\${packageName} - Atual \${current} - Última \${latest}\`;
-      });
-
+      return \`\${packageName} - Atual \${current} - Última \${latest}\`
+    })
 
     if (packagesToUpdate.length) {
-      level(
-        'Dependências com novas versões disponíveis: <br/>'
-        + \` \${packagesToUpdate.join('<br/>')} \`
-      );
+      msg(
+        'Dependências com novas versões disponíveis: <br/>' +
+          \` \${packagesToUpdate.join('<br/>')} \`
+      )
     }
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.log("Failed to execute 'npm outdated'", error);
+    console.log("Failed to execute 'npm outdated'", error)
   }
-};
+}
 
-const execValidation = async () => {
-  const file = await fs.readFile(".dangerrc", 'utf8')
-  const config = JSON.parse(file)
+const modules = {
+  'verify-description': verifyDescriptionChanges,
+  'verify-tests': verifyTestChanges,
+  'verify-docs': verifyDocs,
+  roadmap: buildScriptMessage,
+  'important-files': verifyImportantFiles,
+  'verify-deps': verifyDependencies,
+  'outdated-deps': verifyOutdatedPackages
+}
+
+const main = async () => {
+  const file = await fs.readFile('.dangerrc', 'utf8')
+
+  const defaultConfig = {
+    rules: {
+      'verify-description': 1,
+      'verify-tests': 1,
+      roadmap: 1,
+      'important-files': 2,
+      'verify-deps': 2,
+      'outdated-deps': 2
+    }
+  }
+  const parsedConfig = JSON.parse(file)
+  const config = {
+    ...defaultConfig,
+    ...parsedConfig,
+    rules: {
+      ...defaultConfig.rules,
+      ...parsedConfig.rules
+    }
+  }
+
   const rules = config.rules
 
-  const levels = {
-    0: () => {},
-    1: message,
-    2: warn,
-    3: fail
-  }
+  const jobs = Object.entries(rules).map(([name, level]) => {
+    const fn = modules?.[name]
+    if (!fn) return async () => {}
 
-  const exec = (level, message) => {
-    if(typeof level !== "string") {
-      return
+    return async () => {
+      const callback = exec(level)
+      const params = config?.[name]
+
+      await fn(callback, params)
     }
-    
-    const logger = levels[level]
-    return logger(message)
+  })
+
+  for (const job of jobs) {
+    await job()
   }
+}
 
-  if(rules['has-rc']) {
-    const packageDiff = await danger.git.JSONDiffForFile('package.json');
-    if (packageDiff.version && packageDiff.version.after.includes('-rc')) {
-      exec(rules['has-rc'], "🤦 Versão com RC")
-    }
-  }
-
-  if(rules['important-files']) {
-    verifyImportantFiles(
-      exec.bind(rules['important-files']),
-      config['important-files'] || []
-    )
-  }
-
-  if(rules['npm-outdated']) {
-    await verifyOutdatedPackages(
-      exec.bind(rules['npm-outdated'])
-    )
-  }
-
-  // verifyDescriptionChanges();
-  // await verifyTestChanges();
-  // await buildScriptMessage();
-  // if (findModifiedFile('package.json')) {
-  //   verifyImportantFiles();
-  //   await verifyDocs();
-  //   await verifyDevdependencies();
-  // }
-  // await verifyOutdatedPackages();
-};
-
-execValidation();
+main()
 `.trim()
 
 module.exports = {
