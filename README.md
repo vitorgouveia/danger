@@ -1,205 +1,273 @@
-# Create a JavaScript Action
+# dev-kit/danger
 
-[![GitHub Super-Linter](https://github.com/actions/javascript-action/actions/workflows/linter.yml/badge.svg)](https://github.com/super-linter/super-linter)
-![CI](https://github.com/actions/javascript-action/actions/workflows/ci.yml/badge.svg)
+GitHub Action baseada em [Danger.js](https://danger.systems/js/) que automatiza
+a revisão de Pull Requests através de regras customizáveis. Esta action analisa
+PRs e comenta automaticamente quando encontra problemas (dependências
+desatualizadas, variáveis de ambientes adicionadas/removidas), podendo bloquear
+o merge conforme as regras configuradas.
 
-Use this template to bootstrap the creation of a JavaScript action. :rocket:
+## 🚀 Características
 
-This template includes compilation support, tests, a validation workflow,
-publishing, and versioning guidance.
+- ✅ **Regras Customizáveis**: Configure quais regras aplicar e seus níveis de
+  severidade
+- ✅ **Múltiplos Níveis de Alerta**: Mensagens informativas, avisos ou falhas
+  que bloqueiam o merge
+- ✅ **Cache Inteligente**: Instalação otimizada do Danger.js com cache para
+  execuções mais rápidas
+- ✅ **Fácil Integração**: Basta adicionar um step no seu workflow do GitHub
+  Actions
 
-If you are new, there's also a simpler introduction in the
-[Hello world JavaScript action repository](https://github.com/actions/hello-world-javascript-action).
+## 📋 Regras Disponíveis
 
-## Create Your Own Action
+A action inclui as seguintes regras que podem ser habilitadas ou desabilitadas:
 
-To create your own action, you can use this repository as a template! Just
-follow the below instructions:
+| Regra                | Descrição                                                                 | Nível Padrão |
+| -------------------- | ------------------------------------------------------------------------- | ------------ |
+| `verify-description` | Verifica se o PR tem uma descrição                                        | 1 (message)  |
+| `verify-tests`       | Verifica se testes foram criados/atualizados quando há mudanças no código | 1 (message)  |
+| `verify-docs`        | Verifica se o CHANGELOG.md foi atualizado quando a versão muda            | 1 (message)  |
+| `roadmap`            | Gera roteiro de implantação quando a versão é atualizada                  | 1 (message)  |
+| `important-files`    | Alerta quando arquivos importantes são modificados                        | 2 (warn)     |
+| `verify-deps`        | Lista novas e atualizadas dependências                                    | 2 (warn)     |
+| `outdated-deps`      | Verifica dependências desatualizadas                                      | 2 (warn)     |
 
-1. Click the **Use this template** button at the top of the repository
-1. Select **Create a new repository**
-1. Select an owner and name for your new repository
-1. Click **Create repository**
-1. Clone your new repository
+### Níveis de Severidade
 
-> [!IMPORTANT]
->
-> Make sure to remove or update the [`CODEOWNERS`](./CODEOWNERS) file! For
-> details on how to use this file, see
-> [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners).
+Cada regra pode ser configurada com um dos seguintes níveis de severidade:
 
-## Initial Setup
+#### **Nível 0 - Desabilitado**
 
-After you've cloned the repository to your local machine or codespace, you'll
-need to perform some initial setup steps before you can develop your action.
+A regra não será executada. Use este nível quando quiser desabilitar
+completamente uma verificação específica.
 
-> [!NOTE]
->
-> You'll need to have a reasonably modern version of
-> [Node.js](https://nodejs.org) handy. If you are using a version manager like
-> [`nodenv`](https://github.com/nodenv/nodenv) or
-> [`nvm`](https://github.com/nvm-sh/nvm), you can run `nodenv install` in the
-> root of your repository to install the version specified in
-> [`package.json`](./package.json). Otherwise, 20.x or later should work!
+**Quando usar**: Quando uma regra não é relevante para o seu projeto ou você
+quer temporariamente desabilitá-la.
 
-1. :hammer_and_wrench: Install the dependencies
+**Exemplo**:
 
-   ```bash
-   npm install
-   ```
-
-1. :building_construction: Package the JavaScript for distribution
-
-   ```bash
-   npm run bundle
-   ```
-
-1. :white_check_mark: Run the tests
-
-   ```bash
-   $ npm test
-
-   PASS  ./index.test.js
-     ✓ throws invalid number (3ms)
-     ✓ wait 500 ms (504ms)
-     ✓ test runs (95ms)
-
-   ...
-   ```
-
-## Update the Action Metadata
-
-The [`action.yml`](action.yml) file defines metadata about your action, such as
-input(s) and output(s). For details about this file, see
-[Metadata syntax for GitHub Actions](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions).
-
-When you copy this repository, update `action.yml` with the name, description,
-inputs, and outputs for your action.
-
-## Update the Action Code
-
-The [`src/`](./src/) directory is the heart of your action! This contains the
-source code that will be run when your action is invoked. You can replace the
-contents of this directory with your own code.
-
-There are a few things to keep in mind when writing your action code:
-
-- Most GitHub Actions toolkit and CI/CD operations are processed asynchronously.
-  In `main.js`, you will see that the action is run in an `async` function.
-
-  ```javascript
-  const core = require('@actions/core')
-  //...
-
-  async function run() {
-    try {
-      //...
-    } catch (error) {
-      core.setFailed(error.message)
-    }
+```json
+{
+  "rules": {
+    "outdated-deps": 0 // Não verifica dependências desatualizadas
   }
-  ```
-
-  For more information about the GitHub Actions toolkit, see the
-  [documentation](https://github.com/actions/toolkit/blob/master/README.md).
-
-So, what are you waiting for? Go ahead and start customizing your action!
-
-1. Create a new branch
-
-   ```bash
-   git checkout -b releases/v1
-   ```
-
-1. Replace the contents of `src/` with your action code
-1. Add tests to `__tests__/` for your source code
-1. Format, test, and build the action
-
-   ```bash
-   npm run all
-   ```
-
-   > [!WARNING]
-   >
-   > This step is important! It will run [`ncc`](https://github.com/vercel/ncc)
-   > to build the final JavaScript action code with all dependencies included.
-   > If you do not run this step, your action will not work correctly when it is
-   > used in a workflow. This step also includes the `--license` option for
-   > `ncc`, which will create a license file for all of the production node
-   > modules used in your project.
-
-1. Commit your changes
-
-   ```bash
-   git add .
-   git commit -m "My first action is ready!"
-   ```
-
-1. Push them to your repository
-
-   ```bash
-   git push -u origin releases/v1
-   ```
-
-1. Create a pull request and get feedback on your action
-1. Merge the pull request into the `main` branch
-
-Your action is now published! :rocket:
-
-For information about versioning your action, see
-[Versioning](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-in the GitHub Actions toolkit.
-
-## Validate the Action
-
-You can now validate the action by referencing it in a workflow file. For
-example, [`ci.yml`](./.github/workflows/ci.yml) demonstrates how to reference an
-action in the same repository.
-
-```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v3
-
-  - name: Test Local Action
-    id: test-action
-    uses: ./
-    with:
-      milliseconds: 1000
-
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.test-action.outputs.time }}"
+}
 ```
 
-For example workflow runs, check out the
-[Actions tab](https://github.com/actions/javascript-action/actions)! :rocket:
+#### **Nível 1 - Message (Informativo)**
 
-## Usage
+A regra será executada e adicionará um comentário informativo no PR. Este
+comentário **não bloqueia o merge** e serve apenas para informar sobre algo.
 
-After testing, you can create version tag(s) that developers can use to
-reference different stable versions of your action. For more information, see
-[Versioning](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-in the GitHub Actions toolkit.
+**Quando usar**: Para regras que você quer que sejam visíveis mas não críticas,
+como notificações sobre mudanças de versão ou listagem de dependências
+atualizadas.
 
-To include the action in a workflow in another repository, you can use the
-`uses` syntax with the `@` symbol to reference a specific branch, tag, or commit
-hash.
+**Exemplo**:
+
+```json
+{
+  "rules": {
+    "roadmap": 1, // Gera roteiro de implantação (informativo)
+    "verify-deps": 1 // Lista dependências atualizadas (informativo)
+  }
+}
+```
+
+#### **Nível 2 - Warn (Aviso)**
+
+A regra será executada e adicionará um aviso no PR. O aviso aparece de forma
+destacada, mas **ainda não bloqueia o merge**. Use para alertar sobre possíveis
+problemas que devem ser revisados.
+
+**Quando usar**: Para regras que indicam algo que deve ser verificado, mas não é
+crítico o suficiente para bloquear o merge. Útil para alertar sobre mudanças em
+arquivos importantes ou dependências que precisam de atenção.
+
+**Exemplo**:
+
+```json
+{
+  "rules": {
+    "important-files": 2, // Alerta sobre mudanças em arquivos importantes
+    "verify-deps": 2 // Avisa sobre mudanças em dependências
+  }
+}
+```
+
+#### **Nível 3 - Fail (Falha)**
+
+A regra será executada e, se encontrar problemas, **bloqueará o merge do PR**. O
+PR não poderá ser mesclado até que o problema seja resolvido. Use para regras
+críticas que são obrigatórias.
+
+**Quando usar**: Para regras que são essenciais para manter a qualidade do
+código, como verificar se o PR tem descrição ou se testes foram criados para
+mudanças no código.
+
+**Exemplo**:
+
+```json
+{
+  "rules": {
+    "verify-description": 3, // Obriga PR a ter descrição (bloqueia merge)
+    "verify-tests": 3 // Obriga testes para mudanças no código (bloqueia merge)
+  }
+}
+```
+
+**Resumo Visual**:
+
+| Nível | Tipo         | Bloqueia Merge? | Uso Recomendado                    |
+| ----- | ------------ | --------------- | ---------------------------------- |
+| 0     | Desabilitado | Não             | Regras não relevantes              |
+| 1     | Message      | Não             | Informações úteis mas não críticas |
+| 2     | Warn         | Não             | Alertas que devem ser revisados    |
+| 3     | Fail         | **Sim**         | Regras obrigatórias e críticas     |
+
+## 🎯 Uso Básico
+
+### 1. Criar arquivo de configuração `.dangerrc`
+
+Crie um arquivo `.dangerrc` na raiz do seu repositório:
+
+```json
+{
+  "rules": {
+    "verify-description": 3,
+    "verify-tests": 2,
+    "verify-docs": 1,
+    "roadmap": 1,
+    "important-files": 2,
+    "verify-deps": 1,
+    "outdated-deps": 0
+  }
+}
+```
+
+### 2. Adicionar ao workflow do GitHub Actions
+
+Crie ou edite o arquivo `.github/workflows/danger.yml`:
 
 ```yaml
-steps:
-  - name: Checkout
-    id: checkout
-    uses: actions/checkout@v4
+name: Danger Review
 
-  - name: Run my Action
-    id: run-action
-    uses: actions/javascript-action@v1 # Commit with the `v1` tag
-    with:
-      milliseconds: 1000
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
-  - name: Print Output
-    id: output
-    run: echo "${{ steps.run-action.outputs.time }}"
+jobs:
+  danger:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Run Danger
+        uses: vitorgouveia/danger@v1
 ```
+
+## 📖 Exemplos de Uso
+
+### Exemplo 1: Configuração Mínima
+
+Apenas verificar descrição do PR:
+
+```json
+{
+  "rules": {
+    "verify-description": 3
+  }
+}
+```
+
+### Exemplo 2: Configuração Completa
+
+Habilitar todas as regras com níveis customizados:
+
+```json
+{
+  "rules": {
+    "verify-description": 3,
+    "verify-tests": 3,
+    "verify-docs": 2,
+    "roadmap": 1,
+    "important-files": 2,
+    "verify-deps": 1,
+    "outdated-deps": 1
+  },
+  "important-files": ["docker-compose.yml", ".env.example"]
+}
+```
+
+## ⚙️ Configuração Avançada
+
+### Arquivos Importantes Customizados
+
+Você pode especificar arquivos adicionais para a regra `important-files`:
+
+```json
+{
+  "rules": {
+    "important-files": 2
+  },
+  "important-files": ["docker-compose.yml", ".env.example", "nginx.conf"]
+}
+```
+
+### Desabilitar Regras Específicas
+
+Para desabilitar uma regra, defina seu nível como `0`:
+
+```json
+{
+  "rules": {
+    "verify-description": 3,
+    "verify-tests": 0,
+    "outdated-deps": 0
+  }
+}
+```
+
+## 🔍 Como Funciona
+
+1. A action instala o Danger.js (com cache para otimização)
+2. Cria um `dangerfile.js` dinâmico baseado nas regras configuradas
+3. Executa o Danger.js que analisa o PR
+4. Comenta no PR com os resultados das verificações
+5. Bloqueia o merge se houver regras com nível 3 (fail)
+
+## 📝 Requisitos
+
+- Node.js 20 ou superior
+- Arquivo `.dangerrc` na raiz do repositório
+- Permissões adequadas no GitHub Actions:
+  - `contents: read`
+  - `pull-requests: write`
+  - `issues: write` (opcional, para criar issues)
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Por favor, leia o
+[CONTRIBUTING.md](./CONTRIBUTING.md) para detalhes sobre como contribuir e
+publicar atualizações.
+
+## 📄 Licença
+
+Este projeto está licenciado sob a licença MIT - veja o arquivo
+[LICENSE](./LICENSE) para detalhes.
+
+## 🔗 Links Úteis
+
+- [Danger.js Documentation](https://danger.systems/js/)
+- [GitHub Actions Documentation](https://docs.github.com/en/actions)
+- [Repository](https://github.com/vitorgouveia/danger)

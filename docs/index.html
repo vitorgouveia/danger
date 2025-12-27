@@ -1,0 +1,1481 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="GitHub Action baseada em Danger.js para revisão automática de Pull Requests" />
+    <title>dev-kit/danger - Automatize Revisões de PR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet" />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+      rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script>
+      window.Prism = window.Prism || {}
+      window.Prism.manual = true
+    </script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #0969da;
+        --primary-hover: #0860ca;
+        --primary-light: #ddf4ff;
+        --secondary: #656d76;
+        --bg: #ffffff;
+        --bg-secondary: #f6f8fa;
+        --bg-tertiary: #f0f3f6;
+        --border: #d0d7de;
+        --border-light: #e1e4e8;
+        --text: #1f2328;
+        --text-secondary: #656d76;
+        --text-muted: #8c959f;
+        --success: #1a7f37;
+        --warning: #9a6700;
+        --danger: #cf222e;
+        --info: #0969da;
+        --shadow-sm: 0 1px 0 rgba(27, 31, 36, 0.04);
+        --shadow-md: 0 3px 6px rgba(140, 149, 159, 0.15);
+        --shadow-lg: 0 8px 24px rgba(140, 149, 159, 0.2);
+        --radius: 6px;
+        --radius-lg: 12px;
+      }
+
+      body {
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        line-height: 1.6;
+        color: var(--text);
+        background: var(--bg);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      .container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+
+      /* Hero */
+      .hero {
+        background: linear-gradient(135deg, #0969da 0%, #0550ae 100%);
+        color: white;
+        padding: 80px 0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.3;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero h1 {
+        font-size: 56px;
+        font-weight: 800;
+        margin-bottom: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .hero .subtitle {
+        font-size: 20px;
+        margin-bottom: 32px;
+        opacity: 0.95;
+        font-weight: 400;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      /* Interactive PR Demo */
+      .pr-demo-section {
+        padding: 80px 0;
+        background: var(--bg-secondary);
+      }
+
+      .section-header {
+        text-align: center;
+        margin-bottom: 48px;
+      }
+
+      .section-header h2 {
+        font-size: 40px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        color: var(--text);
+        letter-spacing: -0.01em;
+      }
+
+      .section-header p {
+        font-size: 18px;
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      .pr-demo-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+        margin-top: 48px;
+      }
+
+      .rules-panel {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-md);
+      }
+
+      .rules-panel h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .rule-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-light);
+      }
+
+      .rule-item:last-child {
+        border-bottom: none;
+      }
+
+      .rule-info {
+        flex: 1;
+      }
+
+      .rule-name {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+
+      .rule-desc {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .rule-level {
+        display: flex;
+        gap: 4px;
+      }
+
+      .level-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        border-radius: var(--radius);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .level-btn:hover {
+        border-color: var(--primary);
+        background: var(--primary-light);
+      }
+
+      .level-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+
+      .level-btn.level-0.active {
+        background: var(--text-muted);
+        border-color: var(--text-muted);
+      }
+
+      .level-btn.level-2.active {
+        background: var(--warning);
+        border-color: var(--warning);
+      }
+
+      .level-btn.level-3.active {
+        background: var(--danger);
+        border-color: var(--danger);
+      }
+
+      .pr-preview {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+      }
+
+      .pr-header {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .pr-status {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--success);
+        animation: pulse 2s infinite;
+      }
+
+      .pr-status.fail {
+        background: var(--danger);
+      }
+
+      .pr-title {
+        font-weight: 600;
+        font-size: 16px;
+        color: var(--text);
+      }
+
+      .pr-body {
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+      }
+
+      .danger-comment {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 16px;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .comment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .comment-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .comment-author {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text);
+      }
+
+      .comment-badge {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .badge-message {
+        background: var(--primary-light);
+        color: var(--primary);
+      }
+
+      .badge-warn {
+        background: #fff8e1;
+        color: var(--warning);
+      }
+
+      .badge-fail {
+        background: #ffebee;
+        color: var(--danger);
+      }
+
+      .comment-body {
+        font-size: 14px;
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      .comment-body hr {
+        border: none;
+        border-top: 1px solid var(--border-light);
+        margin: 12px 0;
+      }
+
+      .comment-body strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+      }
+
+      .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      /* Quick Start */
+      .quick-start {
+        padding: 80px 0;
+        background: var(--bg);
+      }
+
+      .quick-start-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 48px;
+        margin-top: 48px;
+        align-items: start;
+      }
+
+      .code-preview {
+        position: sticky;
+        top: 100px;
+      }
+
+      .code-preview-content {
+        background: #0d1117;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        overflow-x: auto;
+        position: relative;
+        box-shadow: var(--shadow-lg);
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .code-preview-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      }
+
+      .code-preview-content .code-block {
+        width: 100%;
+        margin: 0;
+        background: transparent;
+        padding: 0;
+      }
+
+      .code-preview-content .code-block::before {
+        display: none;
+      }
+
+      .code-preview-empty {
+        text-align: center;
+        color: #8b949e;
+        padding: 60px 20px;
+      }
+
+      .code-preview-empty-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .steps-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .step-item {
+        background: var(--bg-secondary);
+        border: 2px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .step-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--primary);
+        transform: scaleY(0);
+        transform-origin: bottom;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .step-item.active {
+        background: var(--bg);
+        border-color: var(--primary);
+        box-shadow: var(--shadow-md);
+        transform: translateX(4px);
+      }
+
+      .step-item.active::before {
+        transform: scaleY(1);
+      }
+
+      .step-item:hover {
+        border-color: var(--primary);
+        transform: translateX(4px);
+      }
+
+      .step-item-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+
+      .step-item-number {
+        width: 48px;
+        height: 48px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 20px;
+        flex-shrink: 0;
+        transition: all 0.3s;
+      }
+
+      .step-item.active .step-item-number {
+        background: var(--primary);
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(9, 105, 218, 0.4);
+      }
+
+      .step-item-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text);
+        transition: color 0.3s;
+      }
+
+      .step-item.active .step-item-title {
+        color: var(--primary);
+      }
+
+      .step-item-description {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.7;
+        margin-left: 64px;
+        transition: color 0.3s;
+      }
+
+      .step-item.active .step-item-description {
+        color: var(--text);
+      }
+
+      .code-content {
+        display: none;
+        width: 100%;
+      }
+
+      .code-content.active {
+        display: block;
+        animation: fadeInCode 0.4s ease-out;
+      }
+
+      @keyframes fadeInCode {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 968px) {
+        .quick-start-container {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+
+        .code-preview {
+          position: relative;
+          top: 0;
+        }
+
+        .step-item-description {
+          margin-left: 0;
+          margin-top: 12px;
+        }
+      }
+
+      .code-block {
+        background: #0d1117;
+        border-radius: var(--radius);
+        padding: 20px;
+        overflow-x: auto;
+        margin-top: 16px;
+        position: relative;
+      }
+
+      .code-block::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
+      }
+
+      .code-block code {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      /* Prism.js overrides */
+      .code-block pre[class*='language-'] {
+        margin: 0;
+        background: transparent;
+        padding: 0;
+      }
+
+      .code-block code[class*='language-'] {
+        color: #c9d1d9;
+      }
+
+      /* Features */
+      .features {
+        padding: 80px 0;
+        background: var(--bg-secondary);
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 32px;
+        margin-top: 48px;
+      }
+
+      @media (max-width: 768px) {
+        .features-grid {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+      }
+
+      .feature-card {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 32px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+      }
+
+      .feature-card::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(
+          circle,
+          rgba(9, 105, 218, 0.1) 0%,
+          transparent 70%
+        );
+        opacity: 0;
+        transition: opacity 0.4s;
+        pointer-events: none;
+      }
+
+      .feature-card:hover::after {
+        opacity: 1;
+      }
+
+      .feature-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), #667eea, #764ba2);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .feature-card:hover::before {
+        transform: scaleX(1);
+      }
+
+      .feature-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-8px) scale(1.02);
+        border-color: var(--primary);
+      }
+
+      .feature-card:nth-child(1)::before {
+        background: linear-gradient(90deg, #ff6b6b, #ee5a6f);
+      }
+
+      .feature-card:nth-child(2)::before {
+        background: linear-gradient(90deg, #4ecdc4, #44a08d);
+      }
+
+      .feature-card:nth-child(3)::before {
+        background: linear-gradient(90deg, #feca57, #ff9ff3);
+      }
+
+      .feature-card:nth-child(4)::before {
+        background: linear-gradient(90deg, #48dbfb, #0abde3);
+      }
+
+      .feature-card:nth-child(5)::before {
+        background: linear-gradient(90deg, #ff9ff3, #f368e0);
+      }
+
+      .feature-card:nth-child(6)::before {
+        background: linear-gradient(90deg, #54e346, #00d2ff);
+      }
+
+      .feature-icon-wrapper {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        position: relative;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background: linear-gradient(
+          135deg,
+          var(--primary-light),
+          rgba(9, 105, 218, 0.1)
+        );
+      }
+
+      .feature-card:nth-child(1) .feature-icon-wrapper {
+        background: linear-gradient(135deg, #ffebee, #ffcdd2);
+      }
+
+      .feature-card:nth-child(2) .feature-icon-wrapper {
+        background: linear-gradient(135deg, #e0f2f1, #b2dfdb);
+      }
+
+      .feature-card:nth-child(3) .feature-icon-wrapper {
+        background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+      }
+
+      .feature-card:nth-child(4) .feature-icon-wrapper {
+        background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+      }
+
+      .feature-card:nth-child(5) .feature-icon-wrapper {
+        background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+      }
+
+      .feature-card:nth-child(6) .feature-icon-wrapper {
+        background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+      }
+
+      .feature-card:hover .feature-icon-wrapper {
+        transform: scale(1.1) rotate(5deg);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+      }
+
+      .feature-icon {
+        font-size: 32px;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        display: block;
+      }
+
+      .feature-card:hover .feature-icon {
+        transform: scale(1.2);
+      }
+
+      .feature-card h4 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        color: var(--text);
+        transition: color 0.3s;
+      }
+
+      .feature-card:hover h4 {
+        color: var(--primary);
+      }
+
+      .feature-card p {
+        color: var(--text-secondary);
+        font-size: 15px;
+        line-height: 1.7;
+        transition: color 0.3s;
+      }
+
+      .feature-card:hover p {
+        color: var(--text);
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      .feature-card:nth-child(odd) .feature-icon-wrapper {
+        animation: float 3s ease-in-out infinite;
+      }
+
+      .feature-card:nth-child(even) .feature-icon-wrapper {
+        animation: float 3s ease-in-out infinite 1.5s;
+      }
+
+      /* Footer */
+      footer {
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        padding: 48px 0;
+        margin-top: 80px;
+      }
+
+      .footer-content {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 48px;
+      }
+
+      .footer-brand h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 16px;
+      }
+
+      .footer-brand p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .footer-links h4 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: var(--text);
+      }
+
+      .footer-links ul {
+        list-style: none;
+      }
+
+      .footer-links a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 14px;
+        display: block;
+        margin-bottom: 8px;
+        transition: color 0.2s;
+      }
+
+      .footer-links a:hover {
+        color: var(--primary);
+      }
+
+      .footer-bottom {
+        margin-top: 32px;
+        padding-top: 32px;
+        border-top: 1px solid var(--border);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+
+      /* Responsive */
+      @media (max-width: 968px) {
+        .pr-demo-container {
+          grid-template-columns: 1fr;
+        }
+
+        .hero h1 {
+          font-size: 40px;
+        }
+
+        .hero .subtitle {
+          font-size: 18px;
+        }
+
+        .section-header h2 {
+          font-size: 32px;
+        }
+
+        .footer-content {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .hero {
+          padding: 60px 0;
+        }
+
+        .hero h1 {
+          font-size: 32px;
+        }
+
+        .hero-problem {
+          padding: 20px;
+        }
+
+        .step {
+          flex-direction: column;
+        }
+
+        .code-block {
+          font-size: 12px;
+          padding: 16px;
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .fade-in {
+        animation: fadeIn 0.6s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="hero">
+      <div class="container hero-content">
+        <h1>Automatize Revisões de PR</h1>
+        <p class="subtitle">
+          Resolva o problema de manutenção de arquivos Danger.js em múltiplos
+          projetos com uma única GitHub Action configurável
+        </p>
+      </div>
+    </section>
+
+    <section id="demo" class="pr-demo-section">
+      <div class="container">
+        <div class="section-header fade-in">
+          <h2>Veja Como Funciona</h2>
+          <p>
+            Selecione as regras e seus níveis de severidade. O comentário do
+            Danger aparecerá automaticamente no PR simulado.
+          </p>
+        </div>
+
+        <div class="pr-demo-container">
+          <div class="rules-panel">
+            <h3>⚙️ Configurar Regras</h3>
+            <div id="rules-list"></div>
+          </div>
+
+          <div class="pr-preview">
+            <div class="pr-header">
+              <div class="pr-status" id="pr-status"></div>
+              <div class="pr-title">
+                feat: Adiciona nova funcionalidade de autenticação
+              </div>
+            </div>
+            <div class="pr-body" id="pr-comments"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quick-start" class="quick-start">
+      <div class="container">
+        <div class="section-header fade-in">
+          <h2>Comece em 3 Passos</h2>
+          <p>Integre a action no seu projeto em menos de 5 minutos</p>
+        </div>
+
+        <div class="quick-start-container">
+          <div class="code-preview">
+            <div class="code-preview-content">
+              <div id="code-content-1" class="code-content active">
+                <div class="code-block">
+                  <pre><code class="language-json">{
+  "rules": {
+    "verify-description": 3,
+    "verify-tests": 2,
+    "verify-docs": 1,
+    "important-files": 2
+  }
+}</code></pre>
+                </div>
+              </div>
+              <div id="code-content-2" class="code-content">
+                <div class="code-block">
+                  <pre><code class="language-yaml">name: Danger Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  danger:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v6
+      
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      
+      - uses: vitorgouveia/danger@v1</code></pre>
+                </div>
+              </div>
+              <div id="code-content-3" class="code-content">
+                <div class="code-preview-empty">
+                  <div class="code-preview-empty-icon">🎉</div>
+                  <p
+                    style="
+                      font-size: 18px;
+                      font-weight: 600;
+                      margin-bottom: 8px;
+                    ">
+                    Pronto!
+                  </p>
+                  <p>
+                    Agora, a cada Pull Request, o Danger.js será executado
+                    automaticamente e comentará no PR com base nas regras
+                    configuradas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="steps-list">
+            <div class="step-item active" data-step="1" onclick="showStep(1)">
+              <div class="step-item-header">
+                <div class="step-item-number">1</div>
+                <h3 class="step-item-title">Crie o arquivo de configuração</h3>
+              </div>
+              <p class="step-item-description">
+                Na raiz do seu repositório, crie um arquivo
+                <code>.dangerrc</code> com as regras que deseja habilitar
+              </p>
+            </div>
+
+            <div class="step-item" data-step="2" onclick="showStep(2)">
+              <div class="step-item-header">
+                <div class="step-item-number">2</div>
+                <h3 class="step-item-title">Adicione ao seu workflow</h3>
+              </div>
+              <p class="step-item-description">
+                Crie ou edite o arquivo
+                <code>.github/workflows/danger.yml</code> no seu repositório
+              </p>
+            </div>
+
+            <div class="step-item" data-step="3" onclick="showStep(3)">
+              <div class="step-item-header">
+                <div class="step-item-number">3</div>
+                <h3 class="step-item-title">Pronto! 🎉</h3>
+              </div>
+              <p class="step-item-description">
+                O Danger.js será executado automaticamente em cada Pull Request
+                e comentará com base nas regras configuradas
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <div class="container">
+        <div class="section-header fade-in">
+          <h2>Recursos e Benefícios</h2>
+          <p>
+            Tudo que você precisa para manter qualidade e consistência nos seus
+            projetos
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-card fade-in">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🎯</span>
+            </div>
+            <h4>Regras Pré-configuradas</h4>
+            <p>
+              7 regras prontas para uso: verificação de descrição, testes,
+              documentação, dependências e muito mais
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">⚙️</span>
+            </div>
+            <h4>Configuração Simples</h4>
+            <p>
+              Configure tudo através de um único arquivo JSON. Sem necessidade
+              de escrever código JavaScript
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">📊</span>
+            </div>
+            <h4>Múltiplos Níveis</h4>
+            <p>
+              Escolha entre mensagem informativa, aviso ou falha que bloqueia o
+              merge
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">⚡</span>
+            </div>
+            <h4>Cache Inteligente</h4>
+            <p>
+              Instalação otimizada do Danger.js com cache para execuções mais
+              rápidas
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🔄</span>
+            </div>
+            <h4>Manutenção Centralizada</h4>
+            <p>
+              Atualize as regras uma vez na action e todos os projetos se
+              beneficiam automaticamente
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon-wrapper">
+              <span class="feature-icon">🚀</span>
+            </div>
+            <h4>Fácil Integração</h4>
+            <p>
+              Basta adicionar um step no seu workflow. Funciona com qualquer
+              projeto Node.js
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      const rules = [
+        {
+          name: 'verify-description',
+          desc: 'Verifica se o PR tem uma descrição',
+          messages: {
+            1: 'Escreva uma breve descrição do PR.',
+            2: 'Escreva uma breve descrição do PR.',
+            3: 'Escreva uma breve descrição do PR.'
+          }
+        },
+        {
+          name: 'verify-tests',
+          desc: 'Verifica se testes foram criados/atualizados quando há mudanças no código',
+          messages: {
+            1: 'Nenhum teste foi criado ou atualizado para a nova implementação',
+            2: 'Nenhum teste foi criado ou atualizado para a nova implementação',
+            3: 'Nenhum teste foi criado ou atualizado para a nova implementação'
+          }
+        },
+        {
+          name: 'verify-docs',
+          desc: 'Verifica se o CHANGELOG.md foi atualizado quando a versão muda',
+          messages: {
+            1: '<strong>CHANGELOG.md</strong> deve ser atualizado com as features implementadas na versão',
+            2: '<strong>CHANGELOG.md</strong> deve ser atualizado com as features implementadas na versão',
+            3: '<strong>CHANGELOG.md</strong> deve ser atualizado com as features implementadas na versão'
+          }
+        },
+        {
+          name: 'roadmap',
+          desc: 'Gera roteiro de implantação quando a versão é atualizada',
+          messages: {
+            1: '=================== Roteiro de Implantação =================== <br/><br/> <strong>Microsserviço</strong>: danger<br/> <strong>Versão</strong>: 1.2.0',
+            2: '=================== Roteiro de Implantação =================== <br/><br/> <strong>Microsserviço</strong>: danger<br/> <strong>Versão</strong>: 1.2.0',
+            3: '=================== Roteiro de Implantação =================== <br/><br/> <strong>Microsserviço</strong>: danger<br/> <strong>Versão</strong>: 1.2.0'
+          }
+        },
+        {
+          name: 'important-files',
+          desc: 'Alerta quando arquivos importantes são modificados',
+          messages: {
+            1: 'Atenção: O arquivo <strong>Dockerfile</strong> foi atualizado.',
+            2: 'Atenção: O arquivo <strong>Dockerfile</strong> foi atualizado.',
+            3: 'Atenção: O arquivo <strong>Dockerfile</strong> foi atualizado.'
+          }
+        },
+        {
+          name: 'verify-deps',
+          desc: 'Lista novas e atualizadas dependências',
+          messages: {
+            1: 'Novas dependências instaladas neste PR: <br/> express - 4.18.2<br/> lodash - 4.17.21',
+            2: 'Novas dependências instaladas neste PR: <br/> express - 4.18.2<br/> lodash - 4.17.21',
+            3: 'Novas dependências instaladas neste PR: <br/> express - 4.18.2<br/> lodash - 4.17.21'
+          }
+        },
+        {
+          name: 'outdated-deps',
+          desc: 'Verifica dependências desatualizadas',
+          messages: {
+            1: 'Dependências com novas versões disponíveis: <br/> react - Atual 17.0.2 - Última 18.2.0<br/> jest - Atual 27.5.1 - Última 29.7.0',
+            2: 'Dependências com novas versões disponíveis: <br/> react - Atual 17.0.2 - Última 18.2.0<br/> jest - Atual 27.5.1 - Última 29.7.0',
+            3: 'Dependências com novas versões disponíveis: <br/> react - Atual 17.0.2 - Última 18.2.0<br/> jest - Atual 27.5.1 - Última 29.7.0'
+          }
+        }
+      ]
+
+      const ruleLevels = {
+        0: { label: 'Desabilitado', badge: '', class: 'level-0' },
+        1: { label: 'Message', badge: 'message', class: 'badge-message' },
+        2: { label: 'Warn', badge: 'warn', class: 'badge-warn' },
+        3: { label: 'Fail', badge: 'fail', class: 'badge-fail' }
+      }
+
+      let activeRules = {}
+
+      function initRules() {
+        const rulesList = document.getElementById('rules-list')
+        rulesList.innerHTML = ''
+
+        rules.forEach(rule => {
+          const ruleItem = document.createElement('div')
+          ruleItem.className = 'rule-item'
+
+          const ruleInfo = document.createElement('div')
+          ruleInfo.className = 'rule-info'
+
+          const ruleName = document.createElement('div')
+          ruleName.className = 'rule-name'
+          ruleName.textContent = rule.name
+
+          const ruleDesc = document.createElement('div')
+          ruleDesc.className = 'rule-desc'
+          ruleDesc.textContent = rule.desc
+
+          ruleInfo.appendChild(ruleName)
+          ruleInfo.appendChild(ruleDesc)
+
+          const ruleLevel = document.createElement('div')
+          ruleLevel.className = 'rule-level'
+
+          for (let level = 0; level <= 3; level++) {
+            const btn = document.createElement('button')
+            btn.className = `level-btn level-${level}`
+            btn.textContent = level
+            btn.title = ruleLevels[level].label
+            btn.onclick = () => toggleRule(rule.name, level)
+            ruleLevel.appendChild(btn)
+          }
+
+          ruleItem.appendChild(ruleInfo)
+          ruleItem.appendChild(ruleLevel)
+          rulesList.appendChild(ruleItem)
+
+          // Initialize with level 0 (disabled)
+          activeRules[rule.name] = 0
+        })
+
+        updatePRComments()
+      }
+
+      function toggleRule(ruleName, level) {
+        const wasActive = activeRules[ruleName] === level
+        activeRules[ruleName] = wasActive ? 0 : level
+
+        // Update button states
+        const ruleItems = document.querySelectorAll('.rule-item')
+        rules.forEach((rule, index) => {
+          if (rule.name === ruleName) {
+            const buttons = ruleItems[index].querySelectorAll('.level-btn')
+            buttons.forEach((btn, btnIndex) => {
+              btn.classList.toggle('active', activeRules[ruleName] === btnIndex)
+            })
+          }
+        })
+
+        updatePRComments()
+      }
+
+      function updatePRComments() {
+        const commentsContainer = document.getElementById('pr-comments')
+        const statusIndicator = document.getElementById('pr-status')
+        const activeRulesList = Object.entries(activeRules).filter(
+          ([, level]) => level > 0
+        )
+
+        if (activeRulesList.length === 0) {
+          commentsContainer.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">💬</div>
+              <p>Selecione as regras acima para ver os comentários do Danger</p>
+        </div>
+          `
+          statusIndicator.classList.remove('fail')
+          return
+        }
+
+        let hasFail = false
+        let highestLevel = 0
+        const messages = []
+
+        // Coletar todas as mensagens e determinar o nível mais alto
+        activeRulesList.forEach(([ruleName, level]) => {
+          const rule = rules.find(r => r.name === ruleName)
+          if (!rule) return
+
+          if (level === 3) hasFail = true
+          if (level > highestLevel) highestLevel = level
+
+          messages.push({
+            ruleName,
+            message: rule.messages[level],
+            level
+          })
+        })
+
+        // Criar apenas um comentário
+        commentsContainer.innerHTML = ''
+
+        const comment = document.createElement('div')
+        comment.className = 'danger-comment'
+
+        const header = document.createElement('div')
+        header.className = 'comment-header'
+
+        const avatar = document.createElement('div')
+        avatar.className = 'comment-avatar'
+        avatar.textContent = 'DK'
+
+        const author = document.createElement('span')
+        author.className = 'comment-author'
+        author.textContent = 'danger[bot]'
+
+        const badge = document.createElement('span')
+        badge.className = `comment-badge ${ruleLevels[highestLevel].class}`
+        badge.textContent = ruleLevels[highestLevel].badge
+
+        header.appendChild(avatar)
+        header.appendChild(author)
+        header.appendChild(badge)
+
+        const body = document.createElement('div')
+        body.className = 'comment-body'
+
+        // Adicionar todas as mensagens no mesmo comentário
+        messages.forEach((msg, index) => {
+          if (index > 0) {
+            const hr = document.createElement('hr')
+            body.appendChild(hr)
+          }
+          const messageDiv = document.createElement('div')
+          messageDiv.style.marginTop = index > 0 ? '12px' : '0'
+          messageDiv.style.marginBottom = '8px'
+          messageDiv.innerHTML = `<strong>${msg.ruleName}:</strong><br/>${msg.message}`
+          body.appendChild(messageDiv)
+        })
+
+        comment.appendChild(header)
+        comment.appendChild(body)
+        commentsContainer.appendChild(comment)
+
+        statusIndicator.classList.toggle('fail', hasFail)
+      }
+
+      // Smooth scroll
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault()
+          const target = document.querySelector(this.getAttribute('href'))
+          if (target) {
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            })
+          }
+        })
+      })
+
+      // Step navigation
+      function showStep(stepNumber) {
+        // Remove active class from all steps
+        document.querySelectorAll('.step-item').forEach(item => {
+          item.classList.remove('active')
+        })
+
+        // Hide all code contents
+        document.querySelectorAll('.code-content').forEach(content => {
+          content.classList.remove('active')
+        })
+
+        // Activate selected step
+        const selectedStep = document.querySelector(
+          `.step-item[data-step="${stepNumber}"]`
+        )
+        if (selectedStep) {
+          selectedStep.classList.add('active')
+        }
+
+        // Show corresponding code
+        const codeContent = document.getElementById(
+          `code-content-${stepNumber}`
+        )
+        if (codeContent) {
+          codeContent.classList.add('active')
+
+          // Re-highlight code with Prism.js
+          if (typeof Prism !== 'undefined') {
+            const codeElement = codeContent.querySelector('code')
+            if (codeElement) {
+              Prism.highlightElement(codeElement)
+            }
+          }
+        }
+      }
+
+      // Initialize on load
+      initRules()
+
+      // Initialize Prism.js
+      if (typeof Prism !== 'undefined') {
+        Prism.highlightAll()
+      }
+
+      // Fade in on scroll
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+      }
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = '1'
+            entry.target.style.transform = 'translateY(0)'
+          }
+        })
+      }, observerOptions)
+
+      document.querySelectorAll('.fade-in').forEach(el => {
+        el.style.opacity = '0'
+        el.style.transform = 'translateY(20px)'
+        el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out'
+        observer.observe(el)
+      })
+    </script>
+  </body>
+</html>

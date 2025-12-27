@@ -1,5 +1,5 @@
 name: 'dev-kit/danger'
-description: 'Danger JS github action job.'
+description: 'Custom PR rules and automated comments using Danger.js'
 author: 'vitorgouveia'
 
 runs:
