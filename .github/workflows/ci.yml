@@ -26,23 +26,23 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
-          cache: pnpm
+          cache: npm
 
       - name: Install Dependencies
-        id: pnpm-ci
-        run: pnpm ci
+        id: npm-ci
+        run: npm ci
 
       - name: Check Format
         id: npm-format-check
-        run: pnpm run format:check
+        run: npm run format:check
 
       - name: Lint
-        id: pnpm-lint
-        run: pnpm run lint
+        id: npm-lint
+        run: npm run lint
 
       - name: Test
-        id: pnpm-ci-test
-        run: pnpm run ci-test
+        id: npm-ci-test
+        run: npm run ci-test
 
   test-action:
     name: GitHub Actions Test
