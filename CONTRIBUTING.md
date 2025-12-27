@@ -252,7 +252,7 @@ Se encontrar problemas ou tiver sugestões, por favor:
 
 - Sempre execute `npm run all` antes de fazer commit
 - Mantenha os testes atualizados ao adicionar novas funcionalidades
-- Documente mudanças significativas no README ou CHANGELOG
+- Documente mudanças significativas no readme ou changelog
 - Siga as convenções de commit do projeto
 
 ## 📚 Recursos Adicionais
