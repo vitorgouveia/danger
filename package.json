@@ -38,8 +38,8 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/cache": "^5.0.1",
-    "@actions/core": "^2.0.1",
+    "@actions/cache": "^5.0.2",
+    "@actions/core": "^2.0.2",
     "@actions/exec": "^2.0.0",
     "globals": "^16.5.0"
   },
